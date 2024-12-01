@@ -88,22 +88,63 @@ app.delete("/deleteUser/:id", (req, res) => {
         });
 });
 // Route to create a new X-ray record
-app.post("/createXray", (req, res) => {
-    XrayModel.create(req.body)
-        .then(user => res.json(user))
-        .catch(err => res.json(err))
-})
+app.post("/createXray", upload.single("image"), async (req, res) => {
+    try {
+      const { customerID, company, item, quantity, weight, rate, amount, xray, customerFrom } = req.body;
+  
+      // Extract the image path
+      const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
+  
+      // Create a new record
+      const newXray = new XrayModel({
+        customerID,
+        company,
+        item,
+        quantity: parseFloat(quantity),
+        weight: parseFloat(weight),
+        rate: parseFloat(rate),
+        amount: parseFloat(amount),
+        xray,
+        customerFrom: new Date(customerFrom),
+        image: imagePath,
+      });
+  
+      const savedXray = await newXray.save();
+      res.status(201).json(savedXray);
+    } catch (error) {
+      console.error("Error saving X-ray record:", error);
+      res.status(500).json({ error: "Failed to save X-ray record" });
+    }
+  });
+  
 app.get("/xray", (req, res) => {
     XrayModel.find({})
         .then(users => res.json(users))
         .catch(err => res.json(err))
 })
 // Route to create a new hallmark record
-app.post("/createHallmark", (req, res) => {
-    HallMark.create(req.body)
-        .then(user => res.json(user))
-        .catch(err => res.json(err))
-})
+app.post("/createHallmark", upload.single('image'), (req, res) => {
+    const { customerID, company, item, quantity, weight, rate, amount, xray, customerFrom } = req.body;
+    const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
+
+    const newHallmark = new HallMark({
+        customerID,
+        company,
+        item,
+        quantity,
+        weight,
+        rate,
+        amount,
+        xray,
+        customerFrom,
+        image: imagePath
+    });
+
+    newHallmark.save()
+        .then((hallmark) => res.json(hallmark))
+        .catch((err) => res.status(500).json({ error: "Error creating hallmark", details: err }));
+});
+
 app.get("/hallmark", (req, res) => {
     HallMark.find({})
         .then(users => res.json(users))

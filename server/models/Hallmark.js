@@ -1,4 +1,3 @@
-// models/Xray.js
 const mongoose = require("mongoose");
 
 const hallmark = new mongoose.Schema(
@@ -12,6 +11,7 @@ const hallmark = new mongoose.Schema(
         amount: Number,
         xray: String,
         customerFrom: Date,
+        image:String
     },
     { timestamps: true }
 );

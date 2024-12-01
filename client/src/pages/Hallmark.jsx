@@ -1,7 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import { UserContext } from "../context/userContext";
 import axios from "axios";
-import XrayDetailsTable from "../Components/XrayDetailsTable";
 import HallmarkDetailTable from "../Components/HallMarkDetailTable";
 
 const XRay = () => {
@@ -41,16 +40,29 @@ const XRay = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    axios.post("http://localhost:8003/createHallmark", formData)
-      .then((result) => {
-        // On success, update the xrayData with the newly added item
-        SetHallMarkData((prevData) => [...prevData, result.data]); // Assuming the server returns the newly added X-ray data
-        console.log(result);
-      })
-      .catch((err) => console.log(err));
+
+    const data = new FormData();
+    Object.keys(formData).forEach((key) => {
+      data.append(key, formData[key]);
+    });
+
+    try {
+      const result = await axios.post("http://localhost:8003/createHallmark", data, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // Update the hallmark data
+      SetHallMarkData((prevData) => [...prevData, result.data]);
+    } catch (err) {
+      console.error(err);
+    }
   };
+
+
 
   useEffect(() => {
     const fetchHallMarkData = async () => {
@@ -129,6 +141,12 @@ const XRay = () => {
                   onChange={handleInputChange}
                 />
               </div>
+
+              <input
+                type="file"
+                className="image"
+                onChange={(e) => setFormData({ ...formData, image: e.target.files[0] })}
+              />
             </div>
 
             {/* Middle Section */}
@@ -170,6 +188,7 @@ const XRay = () => {
                   onChange={handleInputChange}
                 />
               </div>
+
             </div>
 
             {/* Right Section */}

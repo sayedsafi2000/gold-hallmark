@@ -12,6 +12,7 @@ const xraySchema = new mongoose.Schema(
         amount: Number,
         xray: String,
         customerFrom: Date,
+        image: String, // Field to store the image path
     },
     { timestamps: true }
 );

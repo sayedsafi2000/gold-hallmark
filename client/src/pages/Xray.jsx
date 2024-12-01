@@ -5,7 +5,7 @@ import XrayDetailsTable from "../Components/XrayDetailsTable";
 
 const XRay = () => {
   const { customers } = useContext(UserContext);
-  const [xrayData, SetXrayData] = useState([]);
+  const [xrayData, setXrayData] = useState([]);
   const [formData, setFormData] = useState({
     customerID: "",
     company: "",
@@ -16,52 +16,79 @@ const XRay = () => {
     amount: "",
     xray: "",
     customerFrom: "",
+    image: null, // For file upload
   });
 
-  // Handle input change
   const handleInputChange = (e) => {
-    let { id, value } = e.target;
+    const { id, value, files } = e.target;
 
-    if (id === "quantity" || id === "rate") {
-      value = parseFloat(value) || 0;
-    }
-
-    setFormData((prevData) => {
-      const newData = {
+    if (id === "image") {
+      setFormData((prevData) => ({
         ...prevData,
-        [id]: value,
-      };
+        image: files[0], // Store the selected file
+      }));
+    } else {
+      setFormData((prevData) => {
+        const newData = {
+          ...prevData,
+          [id]: value,
+        };
 
-      if (newData.quantity && newData.rate) {
-        newData.amount = (parseFloat(newData.quantity) * parseFloat(newData.rate)).toFixed(2);
-      }
+        if (newData.quantity && newData.rate) {
+          newData.amount = (parseFloat(newData.quantity) * parseFloat(newData.rate)).toFixed(2);
+        }
 
-      return newData;
-    });
+        return newData;
+      });
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    axios.post("http://localhost:8003/createXray", formData)
-      .then((result) => {
-        // On success, update the xrayData with the newly added item
-        SetXrayData((prevData) => [...prevData, result.data]); // Assuming the server returns the newly added X-ray data
-        console.log(result);
-      })
-      .catch((err) => console.log(err));
+  
+    const data = new FormData();
+    Object.keys(formData).forEach((key) => {
+      if (formData[key]) {
+        data.append(key, formData[key]);
+      }
+    });
+  
+    try {
+      const response = await axios.post("http://localhost:8003/createXray", data, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+  
+      // Update the local state with the new record
+      setXrayData((prevData) => [...prevData, response.data]);
+  
+      // Reset the form
+      setFormData({
+        customerID: "",
+        company: "",
+        item: "",
+        quantity: "",
+        weight: "",
+        rate: "",
+        amount: "",
+        xray: "",
+        customerFrom: "",
+        image: null,
+      });
+    } catch (error) {
+      console.error("Error uploading data:", error);
+    }
   };
+  
 
   useEffect(() => {
     const fetchXrayData = async () => {
       try {
-        const response = await fetch("http://localhost:8003/xray");
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        const data = await response.json();
-        SetXrayData(data);
+        const response = await axios.get("http://localhost:8003/xray");
+        setXrayData(response.data);
       } catch (error) {
-        console.error("Error fetching XrayData:", error);
+        console.error("Error fetching X-ray data:", error);
       }
     };
     fetchXrayData();
@@ -71,51 +98,46 @@ const XRay = () => {
     <div className="min-h-screen p-6 flex justify-center">
       <div className="bg-white p-8 rounded-lg shadow-md w-full mt-6">
         <h1 className="text-2xl font-semibold text-green-900 mb-6">XRAY</h1>
-
         <form onSubmit={handleSubmit}>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Left Section */}
-            <div className="col-span-1 space-y-4">
+            <div className="space-y-4">
               <div>
                 <label htmlFor="customerID" className="block text-[#004D40] font-bold">
                   Customer ID
                 </label>
                 <select
                   id="customerID"
-                  className="w-full border-b border-gray-300 p-2 focus:ring focus:ring-green-400 focus:outline-none"
+                  className="w-full border-b border-gray-300 p-2"
                   value={formData.customerID}
                   onChange={handleInputChange}
                 >
                   <option value="">Select</option>
-                  {customers &&
-                    customers.map((customer) => (
-                      <option key={customer._id} value={customer.customerID}>
-                        {customer.customerID}
-                      </option>
-                    ))}
+                  {customers?.map((customer) => (
+                    <option key={customer._id} value={customer.customerID}>
+                      {customer.customerID}
+                    </option>
+                  ))}
                 </select>
               </div>
-
               <div>
                 <label htmlFor="company" className="block text-[#004D40] font-bold">
                   Company Name
                 </label>
                 <select
                   id="company"
-                  className="w-full border-b border-gray-300 p-2 focus:ring focus:ring-green-400 focus:outline-none"
+                  className="w-full border-b border-gray-300 p-2"
                   value={formData.company}
                   onChange={handleInputChange}
                 >
                   <option value="">Select</option>
-                  {customers &&
-                    customers.map((customer) => (
-                      <option key={customer._id} value={customer.company}>
-                        {customer.company}
-                      </option>
-                    ))}
+                  {customers?.map((customer) => (
+                    <option key={customer._id} value={customer.company}>
+                      {customer.company}
+                    </option>
+                  ))}
                 </select>
               </div>
-
               <div>
                 <label htmlFor="item" className="block text-[#004D40] font-bold">
                   Item Name
@@ -123,15 +145,26 @@ const XRay = () => {
                 <input
                   id="item"
                   type="text"
-                  className="w-full border-b border-gray-300 p-2 focus:ring focus:ring-green-400 focus:outline-none"
+                  className="w-full border-b border-gray-300 p-2"
                   value={formData.item}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div>
+                <label htmlFor="image" className="block text-[#004D40] font-bold">
+                  Upload Image
+                </label>
+                <input
+                  id="image"
+                  type="file"
+                  className="w-full border-b border-gray-300 p-2"
                   onChange={handleInputChange}
                 />
               </div>
             </div>
 
             {/* Middle Section */}
-            <div className="col-span-1 space-y-4">
+            <div className="space-y-4">
               <div>
                 <label htmlFor="quantity" className="block text-[#004D40] font-bold">
                   Quantity
@@ -139,12 +172,11 @@ const XRay = () => {
                 <input
                   id="quantity"
                   type="number"
-                  className="w-full border-b border-gray-300 p-2 focus:ring focus:ring-green-400 focus:outline-none"
+                  className="w-full border-b border-gray-300 p-2"
                   value={formData.quantity}
                   onChange={handleInputChange}
                 />
               </div>
-
               <div>
                 <label htmlFor="rate" className="block text-[#004D40] font-bold">
                   Rate
@@ -152,19 +184,19 @@ const XRay = () => {
                 <input
                   id="rate"
                   type="number"
-                  className="w-full border-b border-gray-300 p-2 focus:ring focus:ring-green-400 focus:outline-none"
+                  className="w-full border-b border-gray-300 p-2"
                   value={formData.rate}
                   onChange={handleInputChange}
                 />
               </div>
               <div>
-                <label htmlFor="rate" className="block text-[#004D40] font-bold">
+                <label htmlFor="weight" className="block text-[#004D40] font-bold">
                   Weight
                 </label>
                 <input
                   id="weight"
                   type="number"
-                  className="w-full border-b border-gray-300 p-2 focus:ring focus:ring-green-400 focus:outline-none"
+                  className="w-full border-b border-gray-300 p-2"
                   value={formData.weight}
                   onChange={handleInputChange}
                 />
@@ -172,7 +204,7 @@ const XRay = () => {
             </div>
 
             {/* Right Section */}
-            <div className="col-span-1 space-y-4">
+            <div className="space-y-4">
               <div>
                 <label htmlFor="amount" className="block text-[#004D40] font-bold">
                   Amount
@@ -181,24 +213,22 @@ const XRay = () => {
                   id="amount"
                   type="text"
                   readOnly
-                  className="w-full border-b border-gray-300 p-2 text-[#004D40] focus:outline-none"
+                  className="w-full border-b border-gray-300 p-2 text-[#004D40]"
                   value={formData.amount}
                 />
               </div>
-
               <div>
                 <label htmlFor="xray" className="block text-[#004D40] font-bold">
-                  Xray
+                  X-ray
                 </label>
                 <input
                   id="xray"
                   type="text"
-                  className="w-full border-b border-gray-300 p-2 text-[#004D40] focus:outline-none"
+                  className="w-full border-b border-gray-300 p-2"
                   value={formData.xray}
                   onChange={handleInputChange}
                 />
               </div>
-
               <div>
                 <label htmlFor="customerFrom" className="block text-[#004D40] font-bold">
                   Customer From
@@ -206,7 +236,7 @@ const XRay = () => {
                 <input
                   id="customerFrom"
                   type="date"
-                  className="w-full border-b border-gray-300 p-2 focus:ring focus:ring-green-400 focus:outline-none"
+                  className="w-full border-b border-gray-300 p-2"
                   value={formData.customerFrom}
                   onChange={handleInputChange}
                 />
@@ -214,15 +244,12 @@ const XRay = () => {
             </div>
           </div>
 
-          <button
-            type="submit"
-            className="mt-4 bg-[#004D40] text-white py-2 px-4 rounded-lg"
-          >
+          <button type="submit" className="mt-4 bg-[#004D40] text-white py-2 px-4 rounded-lg">
             Submit
           </button>
         </form>
 
-        <div className="border-2  border-[#004D40] p-4 mt-4 rounded-lg">
+        <div className="border-2 border-[#004D40] p-4 mt-4 rounded-lg">
           <XrayDetailsTable xrayData={xrayData} />
         </div>
       </div>
